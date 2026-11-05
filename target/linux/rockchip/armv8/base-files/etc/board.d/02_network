@@ -38,6 +38,7 @@ rockchip_setup_interfaces()
 	friendlyarm,nanopi-r76s|\
 	hlink,h28k|\
 	hinlink,h28k|\
+	nlnet,xiguapi-v3|\
 	radxa,e20c|\
 	radxa,e25|\
 	radxa,rock-3b)
@@ -129,6 +130,7 @@ rockchip_setup_macs()
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s|\
 	hinlink,h28k|\
+	nlnet,xiguapi-v3|\
 	linkease,easepi-r1|\
 	lunzn,fastrhino-r66s|\
 	lunzn,fastrhino-r68s)
