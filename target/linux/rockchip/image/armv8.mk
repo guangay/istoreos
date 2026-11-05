@@ -485,3 +485,14 @@ endef
 TARGET_DEVICES += xunlong_orangepi-r1-plus-lts
 
 include legacy.mk
+
+define Device/nlnet_xiguapi-v3
+  $(Device/rk3568)
+  DEVICE_VENDOR := NLnet
+  DEVICE_MODEL := XiGuaPi V3
+  DEVICE_DTS_DIR := ../dts
+  DEVICE_DTS := rk3568/rk3568-xiguapi-v3
+  KERNEL = kernel-bin | lzma | fit lzma $$(KDIR)/image-rk3568-xiguapi-v3.dtb
+  DEVICE_PACKAGES := kmod-hwmon-pwmfan kmod-nvme kmod-scsi-core
+endef
+TARGET_DEVICES += nlnet_xiguapi-v3
