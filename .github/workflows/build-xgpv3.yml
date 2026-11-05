@@ -23,6 +23,16 @@ jobs:
           ref: istoreos-25.12
           fetch-depth: 1
 
+      - name: Sanitize U-Boot Makefile
+        run: |
+          f=package/boot/uboot-rockchip/Makefile
+          n=$(grep -n 'BuildPackage/U-Boot' "$f" | head -1 | cut -d: -f1)
+          echo "before: $(wc -l < "$f") lines, truncate at $n"
+          head -n "$n" "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+          echo "after: $(wc -l < "$f") lines"
+          grep -c 'define U-Boot/' "$f"
+          grep -n 'xiguapi-v3-rk3568' "$f"
+
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
@@ -87,7 +97,7 @@ jobs:
 
       - name: Download package sources
         run: |
-          make -j$(nproc) download V=s || make -j1 download V=s
+          make -j$(nproc) download V=s || make -j1 download V=s || true
 
       - name: Build firmware
         run: |
