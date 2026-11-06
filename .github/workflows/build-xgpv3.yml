@@ -147,6 +147,10 @@ jobs:
           CONFIG_DISPLAY_SUPPORT=y
           CONFIG_FEED_qmodem=y
           CONFIG_PACKAGE_luci=y
+          # xz-utils 必须显式选中：tar 的 PACKAGE_TAR_XZ 默认 y，
+          # 否则 luci-app-store 的守卫 depends on !(PACKAGE_TAR_XZ)||PACKAGE_xz-utils 为假，
+          # 整个 store 符号不可见、被 kconfig 静默丢弃（含 taskd/luci-lib-taskd 链）
+          CONFIG_PACKAGE_xz-utils=y
           CONFIG_PACKAGE_luci-app-store=y
           CONFIG_PACKAGE_kmod-mt7915e=y
           CONFIG_PACKAGE_kmod-mt7915-firmware=y
@@ -165,12 +169,13 @@ jobs:
           echo '--- package check ---'
           for s in kmod-fb-tft kmod-fb-tft-gc9307 xgp-v3-screen kmod-mt7915e \
                    kmod-mt7915-firmware kmod-mt7916-firmware kmod-drm-panfrost \
-                   qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store; do
+                   qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store \
+                   xz-utils tar taskd luci-lib-taskd luci-lib-xterm; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
           grep -q 'CONFIG_DISPLAY_SUPPORT=y' .config || { echo 'ERROR: DISPLAY_SUPPORT dropped, panfrost would be unresolvable'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -201,7 +206,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-shmem|luci-app-store' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-shmem|luci-app-store|taskd|xz-utils|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
