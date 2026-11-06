@@ -1,0 +1,63 @@
+name: Debug kconfig (store symbol)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: istoreos-25.12
+          fetch-depth: 1
+
+      - name: Sanitize U-Boot Makefile
+        run: |
+          f=package/boot/uboot-rockchip/Makefile
+          n=$(grep -n 'BuildPackage/U-Boot' "$f" | head -1 | cut -d: -f1)
+          head -n "$n" "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential git python3 gawk libncurses-dev rsync unzip
+
+      - name: Update and install feeds
+        run: |
+          echo "src-git qmodem https://github.com/FUjr/QModem.git;main" >> feeds.conf.default
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Config like production
+        run: |
+          cat > .config <<'EOF'
+          CONFIG_TARGET_rockchip=y
+          CONFIG_TARGET_rockchip_armv8=y
+          CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y
+          CONFIG_DISPLAY_SUPPORT=y
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_luci-app-store=y
+          EOF
+          make defconfig 2>&1 | tee defconfig.log || true
+          grep -n 'recursive\|MISSING' defconfig.log || true
+          echo '--- .config state ---'
+          grep -E 'CONFIG_PACKAGE_luci-app-store|CONFIG_PACKAGE_taskd|CONFIG_PACKAGE_luci-lib-taskd|CONFIG_PACKAGE_luci-lib-xterm' .config || echo 'none present'
+
+      - name: Dump ground truth
+        run: |
+          echo '=== .packageinfo: store chain ==='
+          for p in luci-app-store luci-lib-taskd luci-lib-xterm taskd; do
+            echo "--- $p ---"
+            grep -n -A25 "^Package: $p\$" tmp/.packageinfo | head -30 || echo "NOT IN .packageinfo"
+          done
+          echo '=== .config-package.in blocks ==='
+          for s in luci-app-store luci-lib-taskd luci-app-weechat; do
+            echo "--- config PACKAGE_$s ---"
+            grep -n -A12 "^config PACKAGE_$s\$" tmp/.config-package.in | head -20 || echo "NOT IN .config-package.in"
+          done
+          echo '=== weechat vicinity (line 67033) ==='
+          sed -n '67000,67060p' tmp/.config-package.in
