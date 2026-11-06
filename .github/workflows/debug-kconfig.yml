@@ -45,19 +45,17 @@ jobs:
           make defconfig 2>&1 | tee defconfig.log || true
           grep -n 'recursive\|MISSING' defconfig.log || true
           echo '--- .config state ---'
-          grep -E 'CONFIG_PACKAGE_luci-app-store|CONFIG_PACKAGE_taskd|CONFIG_PACKAGE_luci-lib-taskd|CONFIG_PACKAGE_luci-lib-xterm' .config || echo 'none present'
+          grep -E 'luci-app-store|PACKAGE_taskd|luci-lib-taskd|luci-lib-xterm' .config || echo 'none present'
 
       - name: Dump ground truth
         run: |
-          echo '=== .packageinfo: store chain ==='
-          for p in luci-app-store luci-lib-taskd luci-lib-xterm taskd; do
-            echo "--- $p ---"
-            grep -n -A25 "^Package: $p\$" tmp/.packageinfo | head -30 || echo "NOT IN .packageinfo"
-          done
-          echo '=== .config-package.in blocks ==='
-          for s in luci-app-store luci-lib-taskd luci-app-weechat; do
-            echo "--- config PACKAGE_$s ---"
-            grep -n -A12 "^config PACKAGE_$s\$" tmp/.config-package.in | head -20 || echo "NOT IN .config-package.in"
-          done
-          echo '=== weechat vicinity (line 67033) ==='
-          sed -n '67000,67060p' tmp/.config-package.in
+          echo '=== every mention of luci-app-store in .config-package.in ==='
+          grep -n 'luci-app-store' tmp/.config-package.in || echo 'ZERO mentions'
+          echo '=== store block (unanchored) ==='
+          grep -n -A16 'config PACKAGE_luci-app-store\b' tmp/.config-package.in || echo 'no block'
+          echo '=== luci-lib-taskd block ==='
+          grep -n -A14 'config PACKAGE_luci-lib-taskd\b' tmp/.config-package.in || echo 'no block'
+          echo '=== taskd block ==='
+          grep -n -A14 'config PACKAGE_taskd\b' tmp/.config-package.in || echo 'no block'
+          echo '=== .config: any store ==='
+          grep -in 'store' .config | head || echo 'no store in .config'
