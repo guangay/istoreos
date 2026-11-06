@@ -7,6 +7,9 @@ on:
       - istoreos-25.12
     paths:
       - '.github/workflows/build-xgpv3.yml'
+  schedule:
+    # 每周六 20:00 Asia/Shanghai (= 12:00 UTC)
+    - cron: '0 12 * * 6'
 
 permissions:
   contents: read
@@ -48,23 +51,88 @@ jobs:
             gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
             python3-setuptools python3-yaml python3-pyelftools python3-dev \
             rsync swig unzip zlib1g-dev file wget bc cpio libelf-dev \
-            texinfo time xsltproc subversion
+            texinfo time xsltproc subversion openssl
           python3 -c 'import elftools; print("pyelftools", elftools.__version__)' \
             || sudo pip3 install --break-system-packages pyelftools
           python3 -c 'import elftools; print("pyelftools OK", elftools.__version__)'
 
+      - name: Add Mali GPU (panfrost) kernel package
+        run: |
+          f=package/kernel/linux/modules/video.mk
+          if grep -q 'KernelPackage/drm-panfrost' "$f"; then
+            echo 'panfrost already present'
+          else
+            cat >> "$f" <<'EOF'
+
+          define KernelPackage/drm-panfrost
+            SUBMENU:=$(VIDEO_MENU)
+            TITLE:=DRM support for ARM Mali Midgard/Bifrost GPUs
+            DEPENDS:=@(TARGET_rockchip||TARGET_sunxi) +kmod-drm +kmod-drm-sched +kmod-drm-shmem-helper
+            KCONFIG:=CONFIG_DRM_PANFROST
+            FILES:=$(LINUX_DIR)/drivers/gpu/drm/panfrost/panfrost.ko
+            AUTOLOAD:=$(call AutoProbe,panfrost)
+          endef
+
+          define KernelPackage/drm-panfrost/description
+            DRM driver for ARM Mali Midgard (T6xx/T7xx/T8xx) and
+            Bifrost (G3x/G5x/G7x) GPUs. Used by RK3568 Mali-G52.
+          endef
+
+          $(eval $(call KernelPackage,drm-panfrost))
+          EOF
+            echo 'panfrost package appended'
+          fi
+          echo '--- tail video.mk ---'
+          tail -20 "$f"
+
+      - name: Set LAN IP, hostname and root password
+        run: |
+          d=target/linux/rockchip/armv8/base-files/etc/uci-defaults
+          mkdir -p "$d"
+          HASH=$(openssl passwd -6 -salt xgpv3 'qweasd')
+          echo "shadow hash: ${HASH}"
+          cat > "$d/99-xgpv3-defaults" <<EOF
+          #!/bin/sh
+          # XGPV3 defaults: LAN 10.10.10.1 / hostname zzXGP / root password qweasd
+          uci -q batch <<'UCI'
+          set network.lan.proto='static'
+          set network.lan.ipaddr='10.10.10.1'
+          set network.lan.netmask='255.255.255.0'
+          set network.lan.ip6assign='60'
+          commit network
+          set dhcp.lan.ignore='0'
+          commit dhcp
+          set system.@system[0].hostname='zzXGP'
+          set system.@system[0].timezone='CST-8'
+          set system.@system[0].zonename='Asia/Shanghai'
+          commit system
+          UCI
+          sed -i 's#^root:[^:]*:#root:__SHADOW_HASH__:#' /etc/shadow
+          [ -x /etc/init.d/dropbear ] && /etc/init.d/dropbear enable
+          [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd enable
+          exit 0
+          EOF
+          sed -i "s#__SHADOW_HASH__#${HASH}#" "$d/99-xgpv3-defaults"
+          chmod +x "$d/99-xgpv3-defaults"
+          echo '--- generated file ---'
+          cat "$d/99-xgpv3-defaults"
+
       - name: Update and install feeds
         run: |
-          echo "src-git qmodem https://github.com/zzzz0317/QModem.git;v3.0.1" >> feeds.conf.default
+          echo "src-git qmodem https://github.com/FUjr/QModem.git;main" >> feeds.conf.default
           cat feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          echo '--- qmodem feed contents ---'
+          ls -1 package/feeds/qmodem 2>/dev/null | head -40
+          ls -1 package/feeds/qmodem 2>/dev/null | grep -iE 'qmodem|pcie|mhi' || true
 
       - name: Add XGPV3 screen packages
         run: |
           git clone --depth 1 https://github.com/junhong-l/xgp-v3-screen.git zz-packages
           ln -sfn ../zz-packages package/zz-packages
           ls -la package/zz-packages
+          grep -n 'PKG_NAME\|KernelPackage\|BuildPackage' package/zz-packages/Makefile | head
 
       - name: Generate build config
         run: |
@@ -76,28 +144,35 @@ jobs:
           CONFIG_TARGET_ROOTFS_EXT4FS=y
           CONFIG_TARGET_KERNEL_PARTSIZE=64
           CONFIG_TARGET_ROOTFS_PARTSIZE=1024
+          CONFIG_DISPLAY_SUPPORT=y
           CONFIG_FEED_qmodem=y
           CONFIG_PACKAGE_luci=y
           CONFIG_PACKAGE_luci-app-store=y
           CONFIG_PACKAGE_kmod-mt7915e=y
+          CONFIG_PACKAGE_kmod-mt7915-firmware=y
+          CONFIG_PACKAGE_kmod-mt7916-firmware=y
           CONFIG_PACKAGE_kmod-drm-panfrost=y
-          CONFIG_DRM_SHMEM_HELPER=m
           CONFIG_PACKAGE_kmod-fb-tft=y
           CONFIG_PACKAGE_kmod-fb-tft-gc9307=y
           CONFIG_PACKAGE_xgp-v3-screen=y
-          CONFIG_PACKAGE_luci-app-xgp-v3-screen-brightness=y
           CONFIG_PACKAGE_qmodem=y
-          CONFIG_PACKAGE_luci-app-qmodem=y
-          CONFIG_PACKAGE_luci-app-qmodem-sms=y
-          CONFIG_PACKAGE_luci-app-qmodem-mwan=y
-          CONFIG_PACKAGE_luci-i18n-qmodem-zh-cn=y
-          CONFIG_PACKAGE_luci-i18n-qmodem-sms-zh-cn=y
-          CONFIG_PACKAGE_luci-i18n-qmodem-mwan-zh-cn=y
+          CONFIG_PACKAGE_luci-app-qmodem-next=y
+          CONFIG_PACKAGE_kmod-pcie_mhi=y
           EOF
           make defconfig
-          echo '--- device check ---'
-          grep -E 'DEVICE_nlnet_xiguapi-v3|FEED_qmodem|luci-app-qmodem=|xgp-v3-screen=|kmod-fb-tft' .config || true
+          echo '--- device / global check ---'
+          grep -E 'DEVICE_nlnet_xiguapi-v3|FEED_qmodem|DISPLAY_SUPPORT' .config || true
+          echo '--- package check ---'
+          for s in kmod-fb-tft kmod-fb-tft-gc9307 xgp-v3-screen kmod-mt7915e \
+                   kmod-mt7915-firmware kmod-mt7916-firmware kmod-drm-panfrost \
+                   qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store; do
+            grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
+          done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
+          grep -q 'CONFIG_DISPLAY_SUPPORT=y' .config || { echo 'ERROR: DISPLAY_SUPPORT dropped, panfrost would be unresolvable'; exit 1; }
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next; do
+            grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
+          done
 
       - name: Prerequisite check
         run: |
@@ -110,6 +185,34 @@ jobs:
       - name: Build firmware
         run: |
           make -j$(nproc) 2>&1 | tee build.log || make -j1 V=s 2>&1 | tee -a build.log || (tail -80 build.log | sed 's/%/%25/g' | tr -d '\r' | sed 's/^/::error::/'; exit 1)
+
+      - name: Write build summary
+        if: always()
+        run: |
+          {
+            echo '## iStoreOS 25.12 / XGPV3 build'
+            echo ''
+            echo '| item | value |'
+            echo '|---|---|'
+            echo "| commit | ${GITHUB_SHA:0:8} |"
+            echo "| trigger | ${GITHUB_EVENT_NAME} |"
+            echo "| profile | nlnet_xiguapi-v3 |"
+            echo ''
+            echo '### key packages'
+            echo '```'
+            if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-shmem|luci-app-store' bin/targets/rockchip/armv8/*.manifest || true
+              echo '--- total packages ---'
+              wc -l < bin/targets/rockchip/armv8/*.manifest
+            else
+              echo 'manifest not produced'
+            fi
+            echo '```'
+            echo '### images'
+            echo '```'
+            ls -lh bin/targets/rockchip/armv8/*sysupgrade* 2>/dev/null || echo 'no image'
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Collect artifacts
         if: always()
