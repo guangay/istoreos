@@ -49,13 +49,18 @@ jobs:
 
       - name: Dump ground truth
         run: |
-          echo '=== every mention of luci-app-store in .config-package.in ==='
-          grep -n 'luci-app-store' tmp/.config-package.in || echo 'ZERO mentions'
-          echo '=== store block (unanchored) ==='
-          grep -n -A16 'config PACKAGE_luci-app-store\b' tmp/.config-package.in || echo 'no block'
-          echo '=== luci-lib-taskd block ==='
-          grep -n -A14 'config PACKAGE_luci-lib-taskd\b' tmp/.config-package.in || echo 'no block'
-          echo '=== taskd block ==='
-          grep -n -A14 'config PACKAGE_taskd\b' tmp/.config-package.in || echo 'no block'
-          echo '=== .config: any store ==='
-          grep -in 'store' .config | head || echo 'no store in .config'
+          echo '=== lines before store block (enclosing menu) ==='
+          sed -n '66770,66810p' tmp/.config-package.in
+          echo '=== .config around luci-app-* neighbors ==='
+          grep -n 'luci-app-strongswan-swanctl\|luci-app-store\|luci-app-statistics\|luci-app-sqm' .config | head
+          echo '=== force via scripts/config ==='
+          scripts/config --enable PACKAGE_luci-app-store 2>&1 | head -3 || true
+          grep -n 'PACKAGE_luci-app-store' .config || echo 'still absent after scripts/config'
+          echo '=== make oldconfig ==='
+          yes '' | make oldconfig >/dev/null 2>&1 || true
+          grep -n 'PACKAGE_luci-app-store' .config || echo 'still absent after oldconfig'
+          echo '=== target check: is symbol visible? ==='
+          make -s -f - printstore <<'MKF' 2>&1 | head -20 || true
+          include .config
+          printstore: ; @echo "STORE=$(CONFIG_PACKAGE_luci-app-store)"
+          MKF
