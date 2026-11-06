@@ -109,7 +109,7 @@ ls /dev/fb*
 2. **panfrost 仅内核驱动**：没有打包 mesa 用户态，OpenGL/EGL 不可用，只能做 DRM/KMS 与 framebuffer 加速测试。
 3. **MT7916 使用开源驱动**：走 OpenWrt 主线 mt76，不是联发科原厂闭源驱动，因此 160MHz 等特性以 mt76 支持为准；若 5G/6G 组合异常，可在 LuCI 里把信道宽度降到 80MHz。
 4. **5G 走 PCIe MHI**：`kmod-pcie_mhi` 是 Quectel 树外驱动，若某次内核升级后编译失败，会在构建日志里明确报错，可临时删掉 `CONFIG_PACKAGE_kmod-pcie_mhi=y` 改用 USB QMI 模式。
-5. **iStore 商店**：`luci-app-store` 的符号在 iStoreOS 25.12 下可能被依赖解析丢弃，以每次构建摘要中的 manifest 为准。
+5. **iStore 商店**：已修复。根因是 tar 的 `PACKAGE_TAR_XZ` 默认开启、`xz-utils` 未选中时，`luci-app-store` 的守卫条件 `depends on !(PACKAGE_TAR_XZ)||PACKAGE_xz-utils` 为假，整个符号被 kconfig 静默丢弃（连 `# is not set` 都不写）。`.config` 显式加入 `CONFIG_PACKAGE_xz-utils=y` 后即可正常编译进固件，并把 store 加入 fail-fast 校验清单。
 6. **屏幕亮度**：调节入口在「服务 → XGP Screen」页面内（原 `luci-app-xgp-v3-screen-brightness` 独立包在上游已合并，不再单独提供）。
 
 ---
