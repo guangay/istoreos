@@ -266,6 +266,14 @@ define U-Boot/nanopi-r5s-rk3568
     friendlyarm_nanopi-r5s
 endef
 
+define U-Boot/xiguapi-v3-rk3568
+  $(U-Boot/rk3568/Default)
+  NAME:=XiGuaPi V3
+  UBOOT_CONFIG:=generic-rk3568
+  BUILD_DEVICES:= \
+    nlnet_xiguapi-v3
+endef
+
 define U-Boot/radxa-e25-rk3568
   $(U-Boot/rk3568/Default)
   DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3568-e25
@@ -397,6 +405,7 @@ UBOOT_TARGETS := \
   bpi-r2-pro-rk3568 \
   easepi-r1-rk3568 \
   fastrhino-r66s-rk3568 \
+  xiguapi-v3-rk3568 \
   nanopi-r5c-rk3568 \
   nanopi-r5s-rk3568 \
   radxa-e25-rk3568 \
