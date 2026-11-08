@@ -29,6 +29,7 @@
 | **Mali GPU（panfrost）** | 包定义移植自 ImmortalWrt | 注入 `kmod-drm-panfrost` + `kmod-drm-sched`（24.10 上游两者皆无），依赖 `kmod-drm` + `kmod-drm-shmem-helper` |
 | **iStore 商店** | [linkease/istore](https://github.com/linkease/istore) | `luci-app-store` + taskd 链；构建中显式选中 `xz-utils` 以解除 `TAR_XZ` 守卫导致的静默丢包 |
 | **AP 守护** | iStoreOS 主线 | `wpad-basic-mbedtls`（WPA2-PSK） |
+| **Docker** | iStoreOS 主线 | `dockerd` + `docker` + `docker-compose` + `luci-app-dockerman`（容器管理页面）+ `ttyd`；已开启内核 cgroups/namespaces/veth；rootfs 为 f2fs，与 overlay2 不兼容，默认存储驱动设为 `vfs`（数据目录 `/opt/docker/`） |
 
 ## 三、默认系统配置
 
@@ -87,6 +88,7 @@ cat /etc/openwrt_release
 2. `kmod-pcie_mhi`（Quectel MHI）在 6.6 内核上的兼容性以构建结果为准；若编译失败会暂时移除并在此注明。
 3. MT7916 走 OpenWrt 主线 mt76 开源驱动，非联发科原厂闭源驱动。
 4. iStore 商店若后续再出现丢包，fail-fast 校验会让构建直接失败（不会带病出固件）。
+5. **Docker 使用 vfs 存储驱动**：rootfs 为 f2fs，overlay2 在其上不兼容。vfs 功能完整但每个容器层都完整复制、占用空间较大；如需 overlay2 性能，可把 `data_root` 指向 ext4/btrfs 格式的 NVMe 分区后改回。
 
 ## 七、致谢与许可
 
