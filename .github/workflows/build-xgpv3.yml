@@ -125,6 +125,11 @@ jobs:
             wi=$((wi+1))
           done
           uci commit wireless
+          # Docker：rootfs 为 f2fs，overlay2 与其不兼容，改用 vfs 存储驱动
+          if [ -f /etc/config/dockerd ]; then
+            uci set dockerd.globals.storage_driver='vfs'
+            uci commit dockerd
+          fi
           sed -i 's#^root:[^:]*:#root:__SHADOW_HASH__:#' /etc/shadow
           [ -x /etc/init.d/dropbear ] && /etc/init.d/dropbear enable
           [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd enable
@@ -180,6 +185,16 @@ jobs:
           CONFIG_PACKAGE_qmodem=y
           CONFIG_PACKAGE_luci-app-qmodem-next=y
           CONFIG_PACKAGE_kmod-pcie_mhi=y
+          # Docker：dockerman 自动拉起 docker/dockerd/docker-compose/ttyd/luci-lib-docker
+          CONFIG_PACKAGE_dockerd=y
+          CONFIG_PACKAGE_docker=y
+          CONFIG_PACKAGE_docker-compose=y
+          CONFIG_PACKAGE_luci-app-dockerman=y
+          CONFIG_PACKAGE_ttyd=y
+          # 内核容器支持：rockchip 非 small-flash 默认已开，显式写出保险
+          CONFIG_KERNEL_CGROUPS=y
+          CONFIG_KERNEL_NAMESPACES=y
+          CONFIG_PACKAGE_kmod-veth=y
           CEOF
           make defconfig
           echo '--- device / feed check ---'
@@ -188,11 +203,12 @@ jobs:
           for s in kmod-fb-tft kmod-fb-tft-gc9307 xgp-v3-screen kmod-mt7915e \
                    kmod-mt7915-firmware kmod-mt7916-firmware kmod-drm-panfrost kmod-drm-sched \
                    qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store \
-                   xz-utils tar taskd luci-lib-taskd luci-lib-xterm wpad-basic-mbedtls; do
+                   xz-utils tar taskd luci-lib-taskd luci-lib-xterm wpad-basic-mbedtls \
+                   dockerd docker docker-compose luci-app-dockerman ttyd kmod-veth; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -223,7 +239,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|^tar ' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
