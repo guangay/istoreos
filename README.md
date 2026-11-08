@@ -76,11 +76,15 @@
 - 生成 `.config` 后做符号校验：设备定义、`DISPLAY_SUPPORT`、屏幕三件套、panfrost、qmodem、pcie_mhi 任一缺失即**立即失败**（几分钟内暴露，不必等编译完）
 - 编译完成写 `GITHUB_STEP_SUMMARY`：关键包清单 + 镜像大小
 
-**产物**（Actions 运行页 Artifacts）
+**产物**
 
-- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-squashfs-sysupgrade.img.gz`
-- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-ext4-sysupgrade.img.gz`
-- `*.manifest`、`config.buildinfo`、`sha256sums`、`build.log`、`prereq.log`、`download.log`
+- **Releases（推荐）**：每次构建成功后自动发布到 [Releases](../../releases)，tag 形如 `xgpv3-r<构建号>`，含两个 sysupgrade 镜像 + manifest + config.buildinfo + sha256sums
+- Actions 运行页 Artifacts（临时，90 天过期）：同上内容，另含 `build.log` / `prereq.log` / `download.log`
+
+镜像文件：
+
+- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-squashfs-sysupgrade.img.gz`（刷机/升级用）
+- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-ext4-sysupgrade.img.gz`（TF 卡/扩容场景）
 
 ---
 
