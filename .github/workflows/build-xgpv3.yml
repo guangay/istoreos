@@ -142,12 +142,23 @@ jobs:
 
       - name: Update and install feeds
         run: |
-          echo "src-git qmodem https://github.com/FUjr/QModem.git;main" >> feeds.conf.default
+          cat >> feeds.conf.default <<'FEOF'
+          src-git qmodem https://github.com/FUjr/QModem.git;main
+          # passwall2 官方要求两个 feed：核心组件包 + LuCI 应用
+          src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main
+          src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git;main
+          # lucky 官方 OpenWrt 打包（含 lucky 二进制包 + LuCI 应用）
+          src-git lucky https://github.com/gdy666/luci-app-lucky.git;main
+          # quickfile 文件管理（含 rust 后端 quickfile + LuCI 应用）
+          src-git quickfile https://github.com/sbwml/luci-app-quickfile.git;main
+          FEOF
           cat feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          echo '--- qmodem feed contents ---'
-          ls -1 package/feeds/qmodem 2>/dev/null | head -40
+          echo '--- extra feed contents ---'
+          for f in qmodem passwall_packages passwall2 lucky quickfile; do
+            echo "== $f =="; ls -1 package/feeds/$f 2>/dev/null | head -30
+          done
 
       - name: Add XGPV3 screen packages
         run: |
@@ -155,6 +166,18 @@ jobs:
           ln -sfn ../zz-packages package/zz-packages
           ls -la package/zz-packages
           grep -n 'PKG_NAME\|KernelPackage\|BuildPackage' package/zz-packages/Makefile | head
+
+      - name: Add turboacc (SFE 内核补丁) and kucat theme
+        run: |
+          # turboacc 官方集成脚本：打 shortcut-fe/fullcone 内核补丁(支持6.6)、
+          # 替换 firewall4/nftables/libnftnl 为打过补丁的版本、装入 luci-app-turboacc
+          curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o /tmp/add_turboacc.sh
+          bash /tmp/add_turboacc.sh
+          ls -1 package/turboacc
+          # kucat 主题（JS 版，单包仓库）
+          git clone --depth 1 https://github.com/sirpdboy/luci-theme-kucat.git package/luci-theme-kucat
+          rm -rf package/luci-theme-kucat/.git
+          grep -m2 'PKG_NAME\|LUCI_TITLE' package/luci-theme-kucat/Makefile
 
       - name: Generate build config
         run: |
@@ -195,6 +218,26 @@ jobs:
           CONFIG_KERNEL_CGROUPS=y
           CONFIG_KERNEL_NAMESPACES=y
           CONFIG_PACKAGE_kmod-veth=y
+          # turboacc 网络加速（BBR/流量分载/Shortcut-FE/FullCone NAT）
+          CONFIG_PACKAGE_luci-app-turboacc=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_BBR_CCA=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_OFFLOADING=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_SHORTCUT_FE_CM=y
+          CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_NFT_FULLCONE=y
+          # kucat 主题
+          CONFIG_PACKAGE_luci-theme-kucat=y
+          # passwall2（核心组件由 passwall_packages feed 提供，默认 Xray+SingBox 全选）
+          CONFIG_PACKAGE_luci-app-passwall2=y
+          # lucky（DDNS/反代/AList 等全家桶）
+          CONFIG_PACKAGE_lucky=y
+          CONFIG_PACKAGE_luci-app-lucky=y
+          # UPnP
+          CONFIG_PACKAGE_luci-app-upnp=y
+          # ttyd 网页终端（dockerd 已带 ttyd，这里补 LuCI 页面）
+          CONFIG_PACKAGE_luci-app-ttyd=y
+          # quickfile 文件管理
+          CONFIG_PACKAGE_quickfile=y
+          CONFIG_PACKAGE_luci-app-quickfile=y
           CEOF
           make defconfig
           echo '--- device / feed check ---'
@@ -204,11 +247,14 @@ jobs:
                    kmod-mt7915-firmware kmod-mt7916-firmware kmod-drm-panfrost kmod-drm-sched \
                    qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store \
                    xz-utils tar taskd luci-lib-taskd luci-lib-xterm wpad-basic-mbedtls \
-                   dockerd docker docker-compose luci-app-dockerman ttyd kmod-veth; do
+                   dockerd docker docker-compose luci-app-dockerman ttyd kmod-veth \
+                   luci-app-turboacc luci-theme-kucat luci-app-passwall2 \
+                   lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
+                   quickfile luci-app-quickfile; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -239,7 +285,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|^tar ' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
