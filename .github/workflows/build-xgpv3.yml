@@ -12,7 +12,7 @@ on:
     - cron: '0 12 * * 6'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -237,3 +237,30 @@ jobs:
           name: istoreos-25.12-xgpv3
           path: artifacts/*
           if-no-files-found: warn
+
+      - name: Prepare release files
+        if: success()
+        run: |
+          mkdir -p release
+          cp -v bin/targets/rockchip/armv8/*sysupgrade* release/
+          cp -v bin/targets/rockchip/armv8/*.manifest release/ 2>/dev/null || true
+          cp -v bin/targets/rockchip/armv8/config.buildinfo release/ 2>/dev/null || true
+          cp -v bin/targets/rockchip/armv8/sha256sums release/ 2>/dev/null || true
+          ls -lh release
+
+      - name: Publish to Releases
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: xgpv3-r${{ github.run_number }}
+          name: XGPV3 iStoreOS 25.12 build ${{ github.run_number }}
+          body: |
+            iStoreOS 25.12 / NLnet XiGuaPi V3 (RK3568) 自动构建固件
+
+            - commit: `${{ github.sha }}`
+            - trigger: `${{ github.event_name }}`
+            - 后台: 10.10.10.1 / root / qweasd（hostname zzXGP）
+            - 组件: QModem(FUjr) + luci-app-qmodem-next + kmod-pcie_mhi、GC9307 屏幕三件套、MT7915/MT7916 固件、kmod-drm-panfrost、iStore 商店
+            - squashfs 用于刷机/升级；ext4 用于 TF 卡/扩容场景
+          files: release/*
+          fail_on_unmatched_files: true
