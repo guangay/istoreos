@@ -40,6 +40,7 @@
 | **SmartDNS** | iStoreOS 主线 | `luci-app-smartdns`：DNS 加速与分流，可搭配 passwall2 |
 | **流量统计** | iStoreOS 主线 | `luci-app-nlbwmon`：按主机/协议统计流量 |
 | **OpenList 网盘** | iStoreOS 主线 | `luci-app-openlist`：多网盘聚合挂载（AList 社区后继） |
+| **QuickStart 首页/网络向导** | linkease 官方（[nas-packages-luci](https://github.com/linkease/nas-packages-luci) + [nas-packages](https://github.com/linkease/nas-packages)） | `luci-app-quickstart` + `quickstart` 后端：iStoreOS 风格首页与快速配网向导 |
 
 ## 三、默认系统配置
 
