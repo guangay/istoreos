@@ -238,6 +238,12 @@ jobs:
           # quickfile 文件管理
           CONFIG_PACKAGE_quickfile=y
           CONFIG_PACKAGE_luci-app-quickfile=y
+          # smartdns（DNS 加速/分流）
+          CONFIG_PACKAGE_luci-app-smartdns=y
+          # nlbwmon 流量统计
+          CONFIG_PACKAGE_luci-app-nlbwmon=y
+          # openlist 网盘聚合
+          CONFIG_PACKAGE_luci-app-openlist=y
           CEOF
           make defconfig
           echo '--- device / feed check ---'
@@ -250,11 +256,12 @@ jobs:
                    dockerd docker docker-compose luci-app-dockerman ttyd kmod-veth \
                    luci-app-turboacc luci-theme-kucat luci-app-passwall2 \
                    lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
-                   quickfile luci-app-quickfile; do
+                   quickfile luci-app-quickfile \
+                   luci-app-smartdns luci-app-nlbwmon luci-app-openlist; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile luci-app-smartdns luci-app-nlbwmon luci-app-openlist; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -285,7 +292,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|smartdns|nlbwmon|openlist|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
