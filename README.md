@@ -1,117 +1,97 @@
-iStoreOS 是入门级的路由系统，也是入门级的 NAS 系统，
-基于原版 OpenWRT，在 ARS2 上经过长期迭代，最终开放适配到多个硬件平台
+# iStoreOS 24.10 for XiGuaPi V3 (XGPV3)
 
-更多信息请参阅 https://github.com/istoreos
+基于 [iStoreOS](https://github.com/istoreos/istoreos) `istoreos-24.10` 分支（内核 6.6，ipk/opkg 包体系），为 **NLnet XiGuaPi V3（RK3568）** 定制的自动构建固件。
 
+每周六 20:00（北京时间）自动构建；workflow 变更也会触发。构建成功后固件自动发布到 [Releases](../../releases)。
 
-以下是 OpenWRT 原始的 README
---------
+---
 
-![OpenWrt logo](include/logo.png)
+## 一、设备信息
 
-OpenWrt Project is a Linux operating system targeting embedded devices. Instead
-of trying to create a single, static firmware, OpenWrt provides a fully
-writable filesystem with package management. This frees you from the
-application selection and configuration provided by the vendor and allows you
-to customize the device through the use of packages to suit any application.
-For developers, OpenWrt is the framework to build an application without having
-to build a complete firmware around it; for users this means the ability for
-full customization, to use the device in ways never envisioned.
+| 项目 | 规格 |
+|---|---|
+| 型号 | NLnet XiGuaPi V3（西瓜派 V3） |
+| SoC | Rockchip RK3568（4×Cortex-A55） |
+| GPU | Mali-G52（panfrost 开源驱动） |
+| 网口 | 双 GMAC + RTL8211F（eth0=LAN，eth1=WAN） |
+| 无线 | MT7915/MT7916（PCIe，mt76 开源驱动 + 官方固件） |
+| 5G 模组 | Quectel RM520N-GL 等（PCIe MHI，rmnet_mhi） |
+| 屏幕 | GC9307 SPI 彩屏（SPI3，背光 PWM14） |
+| 存储 | TF 卡 / eMMC / NVMe |
 
-Sunshine!
+## 二、固件包含的组件
 
-## Download
+| 组件 | 来源 | 说明 |
+|---|---|---|
+| **QModem** | [FUjr/QModem](https://github.com/FUjr/QModem) `main`（feed 方式集成） | 5G/4G 模组管理框架：`qmodem` 核心 + `luci-app-qmodem-next`（JS 前端）+ `kmod-pcie_mhi`（Quectel MHI PCIe 驱动） |
+| **屏幕驱动与显示** | [junhong-l/xgp-v3-screen](https://github.com/junhong-l/xgp-v3-screen) | `kmod-fb-tft` + `kmod-fb-tft-gc9307` + `xgp-v3-screen`（LuCI 页面含亮度调节） |
+| **MT7915/MT7916 无线** | iStoreOS `mt76`（OpenWrt 主线） | `kmod-mt7915e` + `kmod-mt7915-firmware` + `kmod-mt7916-firmware` |
+| **Mali GPU（panfrost）** | 包定义移植自 ImmortalWrt | 注入 `kmod-drm-panfrost` + `kmod-drm-sched`（24.10 上游两者皆无），依赖 `kmod-drm` + `kmod-drm-shmem-helper` |
+| **iStore 商店** | [linkease/istore](https://github.com/linkease/istore) | `luci-app-store` + taskd 链；构建中显式选中 `xz-utils` 以解除 `TAR_XZ` 守卫导致的静默丢包 |
+| **AP 守护** | iStoreOS 主线 | `wpad-basic-mbedtls`（WPA2-PSK） |
 
-Built firmware images are available for many architectures and come with a
-package selection to be used as WiFi home router. To quickly find a factory
-image usable to migrate from a vendor stock firmware to OpenWrt, try the
-*Firmware Selector*.
+## 三、默认系统配置
 
-* [OpenWrt Firmware Selector](https://firmware-selector.openwrt.org/)
+| 项目 | 值 |
+|---|---|
+| 后台地址 | `10.10.10.1`（LAN=eth0，掩码 255.255.255.0） |
+| 账号 / 密码 | `root` / `qweasd` |
+| 主机名 | `zzXGP` |
+| 时区 | Asia/Shanghai (CST-8) |
+| **WiFi** | **默认开启**，SSID `zzXGP`，密码 `qweasdzxc`（WPA2-PSK，国家码 CN） |
+| SSH / LuCI | 默认启用（dropbear / uhttpd） |
 
-If your device is supported, please follow the **Info** link to see install
-instructions or consult the support resources listed below.
+> 通过构建时注入的 `uci-defaults/99-xgpv3-defaults` 实现：网络、主机名、root 密码（SHA-512 crypt，构建时生成）、无线启用与 SSID/密钥。无线配置不存在时先执行 `wifi config` 生成再修改，兼容首启时序。
 
-## 
+## 四、构建
 
-An advanced user may require additional or specific package. (Toolchain, SDK, ...) For everything else than simple firmware download, try the wiki download page:
+workflow：`.github/workflows/build-xgpv3.yml`
 
-* [OpenWrt Wiki Download](https://openwrt.org/downloads)
+- 触发：手动 / workflow 文件 push / 每周六 20:00（`cron 0 12 * * 6`）
+- 关键步骤：
+  1. 注入 `kmod-drm-sched` + `kmod-drm-panfrost` 内核包定义
+  2. 生成 `99-xgpv3-defaults`（含 root 密码哈希，构建时生成）
+  3. 追加 QModem feed（FUjr）+ 屏幕包软链
+  4. `make defconfig` 后 fail-fast 校验：设备符号、屏幕三件套、panfrost、qmodem、store、wpad 任一缺失即**立即失败**
+  5. 编译 → manifest 摘要 → 上传 Artifacts → **发布 Release**（tag `xgpv3-2410-r<构建号>`）
 
-## Development
+**产物**：
 
-To build your own firmware you need a GNU/Linux, BSD or macOS system (case
-sensitive filesystem required). Cygwin is unsupported because of the lack of a
-case sensitive file system.
+- [Releases](../../releases)（推荐，永久）：两个 sysupgrade 镜像 + manifest + config.buildinfo + sha256sums
+- Actions Artifacts（90 天过期）：同上 + 完整构建日志
 
-### Requirements
+镜像：
 
-You need the following tools to compile OpenWrt, the package names vary between
-distributions. A complete list with distribution specific packages is found in
-the [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem)
-documentation.
+- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-squashfs-sysupgrade.img.gz`（刷机/升级）
+- `istoreos-rockchip-armv8-nlnet_xiguapi-v3-ext4-sysupgrade.img.gz`（TF 卡/扩容）
 
+## 五、刷机
+
+```bash
+gzip -d istoreos-rockchip-armv8-nlnet_xiguapi-v3-squashfs-sysupgrade.img.gz
+# 用 RKDevTool / dd 写入 TF 卡或 eMMC，或从旧固件后台直接 sysupgrade
 ```
-binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev
-make4.1+ perl python3.7+ rsync subversion unzip which
+
+首启后验证：
+
+```bash
+ip addr show br-lan          # 10.10.10.1
+iw dev                       # 无线接口应已 up
+lsmod | grep -E 'panfrost|fb_gc9307|pcie_mhi|mt7915'
+cat /etc/openwrt_release
 ```
 
-### Quickstart
+## 六、已知限制
 
-1. Run `./scripts/feeds update -a` to obtain all the latest package definitions
-   defined in feeds.conf / feeds.conf.default
+1. **包体系是 ipk/opkg**（24.10），与 25.12 的 apk 不通用；安装软件用 `opkg install`。
+2. `kmod-pcie_mhi`（Quectel MHI）在 6.6 内核上的兼容性以构建结果为准；若编译失败会暂时移除并在此注明。
+3. MT7916 走 OpenWrt 主线 mt76 开源驱动，非联发科原厂闭源驱动。
+4. iStore 商店若后续再出现丢包，fail-fast 校验会让构建直接失败（不会带病出固件）。
 
-2. Run `./scripts/feeds install -a` to install symlinks for all obtained
-   packages into package/feeds/
+## 七、致谢与许可
 
-3. Run `make menuconfig` to select your preferred configuration for the
-   toolchain, target system & firmware packages.
-
-4. Run `make` to build your firmware. This will download all sources, build the
-   cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
-   applications for your target system.
-
-### Related Repositories
-
-The main repository uses multiple sub-repositories to manage packages of
-different categories. All packages are installed via the OpenWrt package
-manager called `opkg`. If you're looking to develop the web interface or port
-packages to OpenWrt, please find the fitting repository below.
-
-* [LuCI Web Interface](https://github.com/openwrt/luci): Modern and modular
-  interface to control the device via a web browser.
-
-* [OpenWrt Packages](https://github.com/openwrt/packages): Community repository
-  of ported packages.
-
-* [OpenWrt Routing](https://github.com/openwrt/routing): Packages specifically
-  focused on (mesh) routing.
-
-* [OpenWrt Video](https://github.com/openwrt/video): Packages specifically
-  focused on display servers and clients (Xorg and Wayland).
-
-## Support Information
-
-For a list of supported devices see the [OpenWrt Hardware Database](https://openwrt.org/supported_devices)
-
-### Documentation
-
-* [Quick Start Guide](https://openwrt.org/docs/guide-quick-start/start)
-* [User Guide](https://openwrt.org/docs/guide-user/start)
-* [Developer Documentation](https://openwrt.org/docs/guide-developer/start)
-* [Technical Reference](https://openwrt.org/docs/techref/start)
-
-### Support Community
-
-* [Forum](https://forum.openwrt.org): For usage, projects, discussions and hardware advise.
-* [Support Chat](https://webchat.oftc.net/#openwrt): Channel `#openwrt` on **oftc.net**.
-
-### Developer Community
-
-* [Bug Reports](https://bugs.openwrt.org): Report bugs in OpenWrt
-* [Dev Mailing List](https://lists.openwrt.org/mailman/listinfo/openwrt-devel): Send patches
-* [Dev Chat](https://webchat.oftc.net/#openwrt-devel): Channel `#openwrt-devel` on **oftc.net**.
-
-## License
-
-OpenWrt is licensed under GPL-2.0
+- [iStoreOS](https://github.com/istoreos/istoreos)（固件基座）
+- [FUjr/QModem](https://github.com/FUjr/QModem)（5G 模组框架）
+- [junhong-l/xgp-v3-screen](https://github.com/junhong-l/xgp-v3-screen)（屏幕驱动与显示）
+- [ImmortalWrt](https://github.com/immortalwrt/immortalwrt)（panfrost 包定义参考）
+- 各上游项目许可证不变；本仓库的构建配置与设备适配文件遵循 GPL-2.0。
