@@ -34,6 +34,7 @@ rockchip_setup_interfaces()
 		ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
 		;;
 	friendlyarm,nanopc-t6|\
+	nlnet,xiguapi-v3|\
 	friendlyarm,nanopi-r5c|\
 	friendlyelec,nanopi-r5s-c1|\
 	hlink,h28k|\
@@ -110,6 +111,7 @@ rockchip_setup_macs()
 	case "$board" in
 	armsom,sige7|\
 	friendlyarm,nanopc-t6|\
+	nlnet,xiguapi-v3|\
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s|\
 	linkease,easepi-r1|\
