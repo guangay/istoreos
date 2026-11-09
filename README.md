@@ -45,9 +45,9 @@
 |---|---|
 | 后台地址 | `10.10.10.1`（LAN=eth0，掩码 255.255.255.0） |
 | 账号 / 密码 | `root` / `qweasd` |
-| 主机名 | `zzXGP` |
+| 主机名 | `XGPV3` |
 | 时区 | Asia/Shanghai (CST-8) |
-| **WiFi** | **默认开启**，SSID `zzXGP`，密码 `qweasdzxc`（WPA2-PSK，国家码 CN） |
+| **WiFi** | **默认开启**，SSID `XGPV3`（与主机名一致），密码 `88888889`（WPA2-PSK，国家码 CN） |
 | SSH / LuCI | 默认启用（dropbear / uhttpd） |
 
 > 通过构建时注入的 `uci-defaults/99-xgpv3-defaults` 实现：网络、主机名、root 密码（SHA-512 crypt，构建时生成）、无线启用与 SSID/密钥。无线配置不存在时先执行 `wifi config` 生成再修改，兼容首启时序。
