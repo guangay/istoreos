@@ -158,6 +158,12 @@ jobs:
           cat feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          # geoview（passwall2 硬依赖）go.mod 要求 Go >= 1.25，而 24.10 自带 Go 1.23 且
+          # golang-package.mk 写死 GOTOOLCHAIN=local 会导致编译直接失败；
+          # 改为 auto 让 go 按 go.mod 自动下载所需工具链（其余 Go 包仍用本地 1.23）
+          sed -i 's/GOTOOLCHAIN=local/GOTOOLCHAIN=auto/' feeds/packages/lang/golang/golang-package.mk
+          grep -q 'GOTOOLCHAIN=auto' feeds/packages/lang/golang/golang-package.mk \
+            || { echo 'ERROR: GOTOOLCHAIN patch failed'; exit 1; }
           echo '--- extra feed contents ---'
           for f in qmodem passwall_packages passwall2 lucky quickfile nas_luci nas_packages; do
             echo "== $f =="; ls -1 package/feeds/$f 2>/dev/null | head -30
@@ -261,11 +267,11 @@ jobs:
                    lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
                    quickfile luci-app-quickfile \
                    luci-app-smartdns luci-app-openlist \
-                   luci-app-quickstart quickstart; do
+                   luci-app-quickstart quickstart geoview; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart geoview; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -279,6 +285,7 @@ jobs:
 
       - name: Build firmware
         run: |
+          set -o pipefail
           make -j$(nproc) 2>&1 | tee build.log || make -j1 V=s 2>&1 | tee -a build.log || (tail -80 build.log | sed 's/%/%25/g' | tr -d '\r' | sed 's/^/::error::/'; exit 1)
 
       - name: Write build summary
@@ -296,7 +303,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|smartdns|openlist|quickstart|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|smartdns|openlist|quickstart|geoview|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
