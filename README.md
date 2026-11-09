@@ -32,12 +32,10 @@
 | **Docker** | iStoreOS 主线 | `dockerd` + `docker` + `docker-compose` + `luci-app-dockerman`（容器管理页面）+ `ttyd`；已开启内核 cgroups/namespaces/veth；rootfs 为 f2fs，与 overlay2 不兼容，默认存储驱动设为 `vfs`（数据目录 `/opt/docker/`） |
 | **TurboACC 网络加速** | [chenmozhijin/turboacc](https://github.com/chenmozhijin/turboacc)（`luci` 分支，官方 `add_turboacc.sh` 集成） | `luci-app-turboacc`：BBR + 流量分载 + Shortcut-FE + FullCone NAT；对内核打 SFE 补丁（6.6 受官方支持）并替换 firewall4/nftables 为补丁版 |
 | **Kucat 主题** | [sirpdboy/luci-theme-kucat](https://github.com/sirpdboy/luci-theme-kucat) | `luci-theme-kucat`（JS 版主题，在「系统 → 语言和界面」切换） |
-| **PassWall2** | [Openwrt-Passwall/openwrt-passwall2](https://github.com/Openwrt-Passwall/openwrt-passwall2) + [openwrt-passwall-packages](https://github.com/Openwrt-Passwall/openwrt-passwall-packages)（官方双 feed） | `luci-app-passwall2`，含 Xray + SingBox 核心、geoip/geosite/geoview 数据 |
 | **Lucky** | [gdy666/luci-app-lucky](https://github.com/gdy666/luci-app-lucky)（官方 OpenWrt 打包） | `lucky` + `luci-app-lucky`：DDNS / 反向代理 / 端口转发 / AList 等 |
 | **UPnP** | iStoreOS 主线 | `luci-app-upnp` + `miniupnpd` |
 | **网页终端** | iStoreOS 主线 | `luci-app-ttyd`（ttyd 随 Docker 已装） |
-| **QuickFile 文件管理** | [sbwml/luci-app-quickfile](https://github.com/sbwml/luci-app-quickfile) | `quickfile`（Rust 后端）+ `luci-app-quickfile` |
-| **SmartDNS** | iStoreOS 主线 | `luci-app-smartdns`：DNS 加速与分流，可搭配 passwall2 |
+| **SmartDNS** | iStoreOS 主线 | `luci-app-smartdns`：DNS 加速与分流 |
 | **OpenList 网盘** | iStoreOS 主线 | `luci-app-openlist`：多网盘聚合挂载（AList 社区后继） |
 | **QuickStart 首页/网络向导** | linkease 官方（[nas-packages-luci](https://github.com/linkease/nas-packages-luci) + [nas-packages](https://github.com/linkease/nas-packages)） | `luci-app-quickstart` + `quickstart` 后端：iStoreOS 风格首页与快速配网向导 |
 
