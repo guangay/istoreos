@@ -144,13 +144,8 @@ jobs:
         run: |
           cat >> feeds.conf.default <<'FEOF'
           src-git qmodem https://github.com/FUjr/QModem.git;main
-          # passwall2 官方要求两个 feed：核心组件包 + LuCI 应用
-          src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main
-          src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git;main
           # lucky 官方 OpenWrt 打包（含 lucky 二进制包 + LuCI 应用）
           src-git lucky https://github.com/gdy666/luci-app-lucky.git;main
-          # quickfile 文件管理（含 rust 后端 quickfile + LuCI 应用）
-          src-git quickfile https://github.com/sbwml/luci-app-quickfile.git;main
           # iStoreOS 首页/网络向导（linkease 官方：LuCI 前端 + quickstart 后端）
           src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main
           src-git nas_packages https://github.com/linkease/nas-packages.git;master
@@ -158,14 +153,12 @@ jobs:
           cat feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          # geoview（passwall2 硬依赖）go.mod 要求 Go >= 1.25，而 24.10 自带 Go 1.23 且
-          # golang-package.mk 写死 GOTOOLCHAIN=local 会导致编译直接失败；
-          # 改为 auto 让 go 按 go.mod 自动下载所需工具链（其余 Go 包仍用本地 1.23）
+          # 保留 GOTOOLCHAIN=auto：24.10 自带 Go 1.23，其他 Go 包若要求更高版本可自动取工具链
           sed -i 's/GOTOOLCHAIN=local/GOTOOLCHAIN=auto/' feeds/packages/lang/golang/golang-package.mk
           grep -q 'GOTOOLCHAIN=auto' feeds/packages/lang/golang/golang-package.mk \
             || { echo 'ERROR: GOTOOLCHAIN patch failed'; exit 1; }
           echo '--- extra feed contents ---'
-          for f in qmodem passwall_packages passwall2 lucky quickfile nas_luci nas_packages; do
+          for f in qmodem lucky nas_luci nas_packages; do
             echo "== $f =="; ls -1 package/feeds/$f 2>/dev/null | head -30
           done
 
@@ -235,8 +228,6 @@ jobs:
           CONFIG_PACKAGE_luci-app-turboacc_INCLUDE_NFT_FULLCONE=y
           # kucat 主题
           CONFIG_PACKAGE_luci-theme-kucat=y
-          # passwall2（核心组件由 passwall_packages feed 提供，默认 Xray+SingBox 全选）
-          CONFIG_PACKAGE_luci-app-passwall2=y
           # lucky（DDNS/反代/AList 等全家桶）
           CONFIG_PACKAGE_lucky=y
           CONFIG_PACKAGE_luci-app-lucky=y
@@ -244,9 +235,6 @@ jobs:
           CONFIG_PACKAGE_luci-app-upnp=y
           # ttyd 网页终端（dockerd 已带 ttyd，这里补 LuCI 页面）
           CONFIG_PACKAGE_luci-app-ttyd=y
-          # quickfile 文件管理
-          CONFIG_PACKAGE_quickfile=y
-          CONFIG_PACKAGE_luci-app-quickfile=y
           # smartdns（DNS 加速/分流）
           CONFIG_PACKAGE_luci-app-smartdns=y
           # openlist 网盘聚合
@@ -263,15 +251,14 @@ jobs:
                    qmodem luci-app-qmodem-next kmod-pcie_mhi luci-app-store \
                    xz-utils tar taskd luci-lib-taskd luci-lib-xterm wpad-basic-mbedtls \
                    dockerd docker docker-compose luci-app-dockerman ttyd kmod-veth \
-                   luci-app-turboacc luci-theme-kucat luci-app-passwall2 \
+                   luci-app-turboacc luci-theme-kucat \
                    lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
-                   quickfile luci-app-quickfile \
                    luci-app-smartdns luci-app-openlist \
-                   luci-app-quickstart quickstart geoview; do
+                   luci-app-quickstart quickstart; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-passwall2 luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-quickfile quickfile luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart geoview; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
@@ -303,7 +290,7 @@ jobs:
             echo '### key packages'
             echo '```'
             if [ -f bin/targets/rockchip/armv8/*.manifest ]; then
-              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|passwall|lucky|quickfile|upnp|smartdns|openlist|quickstart|geoview|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
+              grep -iE 'xgp|gc9307|fb-tft|qmodem|pcie_mhi|mt7915|mt7916|panfrost|drm-sched|drm-shmem|luci-app-store|taskd|xz-utils|wpad|docker|ttyd|turboacc|kucat|lucky|upnp|smartdns|openlist|quickstart|shortcut-fe|fullcone|^tar ' bin/targets/rockchip/armv8/*.manifest || true
               echo '--- total packages ---'
               wc -l < bin/targets/rockchip/armv8/*.manifest
             else
