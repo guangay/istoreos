@@ -115,7 +115,7 @@ jobs:
           wi=0
           while uci -q get "wireless.@wifi-device[$wi]" >/dev/null 2>&1; do
             uci set "wireless.@wifi-device[$wi].disabled=0"
-            uci set "wireless.@wifi-device[$wi].country=CN"
+            uci set "wireless.@wifi-device[$wi].country=US"
             wi=$((wi+1))
           done
           wi=0
@@ -345,7 +345,7 @@ jobs:
             - commit: `${{ github.sha }}`
             - trigger: `${{ github.event_name }}`
             - 后台: 10.10.10.1 / root / qweasd（hostname XGPV3）
-            - WiFi: 默认开启，SSID `XGPV3`，密码 `88888889`（WPA2，国家码 CN）
+            - WiFi: 默认开启，SSID `XGPV3`，密码 `88888889`（WPA2，国家码 US）
             - 组件: QModem(FUjr) + luci-app-qmodem-next + kmod-pcie_mhi、GC9307 屏幕三件套、MT7915/MT7916 固件、kmod-drm-panfrost、iStore 商店、wpad-basic-mbedtls
             - squashfs 用于刷机/升级；ext4 用于 TF 卡/扩容场景
           files: release/*
