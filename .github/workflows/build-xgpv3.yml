@@ -95,7 +95,7 @@ jobs:
           echo "shadow hash: ${HASH}"
           cat > "$d/99-xgpv3-defaults" <<'UEOF'
           #!/bin/sh
-          # XGPV3 defaults: LAN 10.10.10.1 / hostname zzXGP / root qweasd / WiFi zzXGP(qweasdzxc)
+          # XGPV3 defaults: LAN 10.10.10.1 / hostname XGPV3 / root qweasd / WiFi XGPV3(88888889)
           uci -q batch <<'UCI'
           set network.lan.proto='static'
           set network.lan.ipaddr='10.10.10.1'
@@ -104,24 +104,25 @@ jobs:
           commit network
           set dhcp.lan.ignore='0'
           commit dhcp
-          set system.@system[0].hostname='zzXGP'
+          set system.@system[0].hostname='XGPV3'
           set system.@system[0].timezone='CST-8'
           set system.@system[0].zonename='Asia/Shanghai'
           commit system
           UCI
           # WiFi 自动开启：OpenWrt 默认 radio disabled=1；配置缺失时先生成默认配置
+          # 注意：值不能内嵌引号（"…ssid='XGPV3'" 会把单引号写进值里）
           [ -f /etc/config/wireless ] || /sbin/wifi config
           wi=0
           while uci -q get "wireless.@wifi-device[$wi]" >/dev/null 2>&1; do
-            uci set "wireless.@wifi-device[$wi].disabled='0'"
-            uci set "wireless.@wifi-device[$wi].country='CN'"
+            uci set "wireless.@wifi-device[$wi].disabled=0"
+            uci set "wireless.@wifi-device[$wi].country=CN"
             wi=$((wi+1))
           done
           wi=0
           while uci -q get "wireless.@wifi-iface[$wi]" >/dev/null 2>&1; do
-            uci set "wireless.@wifi-iface[$wi].ssid='zzXGP'"
-            uci set "wireless.@wifi-iface[$wi].encryption='psk2'"
-            uci set "wireless.@wifi-iface[$wi].key='qweasdzxc'"
+            uci set "wireless.@wifi-iface[$wi].ssid=XGPV3"
+            uci set "wireless.@wifi-iface[$wi].encryption=psk2"
+            uci set "wireless.@wifi-iface[$wi].key=88888889"
             wi=$((wi+1))
           done
           uci commit wireless
@@ -343,8 +344,8 @@ jobs:
 
             - commit: `${{ github.sha }}`
             - trigger: `${{ github.event_name }}`
-            - 后台: 10.10.10.1 / root / qweasd（hostname zzXGP）
-            - WiFi: 默认开启，SSID `zzXGP`，密码 `qweasdzxc`（WPA2，国家码 CN）
+            - 后台: 10.10.10.1 / root / qweasd（hostname XGPV3）
+            - WiFi: 默认开启，SSID `XGPV3`，密码 `88888889`（WPA2，国家码 CN）
             - 组件: QModem(FUjr) + luci-app-qmodem-next + kmod-pcie_mhi、GC9307 屏幕三件套、MT7915/MT7916 固件、kmod-drm-panfrost、iStore 商店、wpad-basic-mbedtls
             - squashfs 用于刷机/升级；ext4 用于 TF 卡/扩容场景
           files: release/*
