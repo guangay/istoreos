@@ -150,6 +150,8 @@ jobs:
           # iStoreOS 首页/网络向导（linkease 官方：LuCI 前端 + quickstart 后端）
           src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main
           src-git nas_packages https://github.com/linkease/nas-packages.git;master
+          src-git npuqos https://github.com/guangay/npuqos.git;main
+          src-git simpleadmin https://github.com/guangay/simpleadmin.git;main
           FEOF
           cat feeds.conf.default
           ./scripts/feeds update -a
@@ -159,7 +161,7 @@ jobs:
           grep -q 'GOTOOLCHAIN=auto' feeds/packages/lang/golang/golang-package.mk \
             || { echo 'ERROR: GOTOOLCHAIN patch failed'; exit 1; }
           echo '--- extra feed contents ---'
-          for f in qmodem lucky nas_luci nas_packages; do
+          for f in qmodem lucky nas_luci nas_packages npuqos simpleadmin; do
             echo "== $f =="; ls -1 package/feeds/$f 2>/dev/null | head -30
           done
 
@@ -242,6 +244,17 @@ jobs:
           CONFIG_PACKAGE_luci-app-openlist=y
           # iStoreOS 首页/网络向导（自动拉起 quickstart 后端）
           CONFIG_PACKAGE_luci-app-quickstart=y
+          # guangay extra feeds: NPU 智能 QoS + SimpleAdmin 面板
+          CONFIG_PACKAGE_kmod-rknpu=y
+          CONFIG_PACKAGE_librknnrt=y
+          CONFIG_PACKAGE_libglibc-shim=y
+          CONFIG_PACKAGE_libstdcxx-cxx11=y
+          CONFIG_PACKAGE_npu-flowqos=y
+          CONFIG_PACKAGE_luci-app-npuqos=y
+          CONFIG_PACKAGE_simpleadmin=y
+          CONFIG_PACKAGE_qmodem-voip=y
+          CONFIG_PACKAGE_qmodem-sipd=y
+          CONFIG_PACKAGE_luci-app-qmodem-voip=y
           CEOF
           make defconfig
           echo '--- device / feed check ---'
@@ -255,11 +268,11 @@ jobs:
                    luci-app-turboacc luci-theme-kucat \
                    lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
                    luci-app-smartdns luci-app-openlist \
-                   luci-app-quickstart quickstart; do
+                   luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
