@@ -258,6 +258,7 @@ jobs:
           CONFIG_PACKAGE_qmodem-sipd=y
           CONFIG_PACKAGE_luci-app-qmodem-voip=y
           CONFIG_PACKAGE_luci-app-kodi=y
+          # note: file-only packages need empty Build/Prepare + Build/Compile
           CONFIG_PACKAGE_luci-app-xgpscreen=y
           CONFIG_PACKAGE_python3-pillow=y
           CONFIG_PACKAGE_ffmpeg=y
