@@ -798,3 +798,20 @@
 		remote-endpoint = <&hdmi_in_vp0>;
 	};
 };
+
+/* NPU: 最小内联节点（不引 rk3568-npu.dtsi，避免依赖 &scmi_clk / &qos_npu / RK3568_PD_NPU
+ * 这些在本 SoC dtsi 里不存在的标签）。IOMMU 未启用，驱动走 non-iommu 模式。 */
+/ {
+	rknpu: npu@fde40000 {
+		compatible = "rockchip,rk3568-rknpu", "rockchip,rknpu";
+		reg = <0x0 0xfde40000 0x0 0x10000>;
+		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru CLK_NPU>, <&cru ACLK_NPU>, <&cru HCLK_NPU>;
+		clock-names = "clk", "aclk", "hclk";
+		assigned-clocks = <&cru CLK_NPU>;
+		assigned-clock-rates = <600000000>;
+		resets = <&cru SRST_A_NPU>, <&cru SRST_H_NPU>;
+		reset-names = "srst_a", "srst_h";
+		status = "okay";
+	};
+};
