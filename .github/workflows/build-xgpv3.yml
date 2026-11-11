@@ -154,6 +154,7 @@ jobs:
           src-git simpleadmin https://github.com/guangay/simpleadmin.git;main
           src-git kodi https://github.com/guangay/luci-app-kodi.git;main
           src-git xgpscreen https://github.com/guangay/xgpscreen.git;main
+          src-git kodi_prebuilt https://github.com/guangay/kodi-prebuilt.git;main
           FEOF
           cat feeds.conf.default
           ./scripts/feeds update -a
@@ -163,7 +164,7 @@ jobs:
           grep -q 'GOTOOLCHAIN=auto' feeds/packages/lang/golang/golang-package.mk \
             || { echo 'ERROR: GOTOOLCHAIN patch failed'; exit 1; }
           echo '--- extra feed contents ---'
-          for f in qmodem lucky nas_luci nas_packages npuqos simpleadmin kodi xgpscreen; do
+          for f in qmodem lucky nas_luci nas_packages npuqos simpleadmin kodi xgpscreen kodi_prebuilt; do
             echo "== $f =="; ls -1 package/feeds/$f 2>/dev/null | head -30
           done
 
@@ -263,6 +264,7 @@ jobs:
           CONFIG_PACKAGE_luci-app-xgpscreen=y
           CONFIG_PACKAGE_python3-pillow=y
           CONFIG_PACKAGE_ffmpeg=y
+          CONFIG_PACKAGE_kodi=y
           CEOF
           make defconfig
           echo '--- device / feed check ---'
@@ -276,11 +278,11 @@ jobs:
                    luci-app-turboacc luci-theme-kucat \
                    lucky luci-app-lucky luci-app-upnp luci-app-ttyd \
                    luci-app-smartdns luci-app-openlist \
-                   luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin luci-app-kodi luci-app-xgpscreen; do
+                   luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin luci-app-kodi luci-app-xgpscreen kodi; do
             grep -E "^(CONFIG_PACKAGE_${s}=y|# CONFIG_PACKAGE_${s} is not set)" .config || echo "MISSING SYMBOL: ${s}"
           done
           grep -q 'CONFIG_TARGET_rockchip_armv8_DEVICE_nlnet_xiguapi-v3=y' .config || { echo 'ERROR: device symbol missing'; exit 1; }
-          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin luci-app-kodi luci-app-xgpscreen; do
+          for s in xgp-v3-screen kmod-fb-tft-gc9307 kmod-drm-panfrost qmodem luci-app-qmodem-next luci-app-store wpad-basic-mbedtls dockerd luci-app-dockerman luci-app-turboacc luci-theme-kucat luci-app-lucky lucky luci-app-upnp luci-app-ttyd luci-app-smartdns luci-app-openlist luci-app-quickstart quickstart npu-flowqos luci-app-npuqos simpleadmin luci-app-kodi luci-app-xgpscreen kodi; do
             grep -q "CONFIG_PACKAGE_${s}=y" .config || { echo "ERROR: required package dropped: ${s}"; exit 1; }
           done
 
